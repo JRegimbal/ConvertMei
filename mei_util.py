@@ -3,14 +3,17 @@ from xml.etree import ElementTree
 ElementTree.register_namespace('xml', 'http://www.w3.org/XML/1998/namespace')
 ElementTree.register_namespace('', 'http://www.music-encoding.org/ns/mei')
 
+
 def staff_based_to_sb(original_file, modified_file):
     mei_tree = ElementTree.parse(original_file)
     mei_tag = mei_tree.getroot()
 
     for section in mei_tag.findall('.//{http://www.music-encoding.org/ns/mei}section'):
         # Make staff and layer to be containers
-        new_staff = ElementTree.Element('{http://www.music-encoding.org/ns/mei}staff', {'n': '1'})
-        container = ElementTree.SubElement(new_staff, '{http://www.music-encoding.org/ns/mei}layer')
+        new_staff = ElementTree.Element(
+            '{http://www.music-encoding.org/ns/mei}staff', {'n': '1'})
+        container = ElementTree.SubElement(
+            new_staff, '{http://www.music-encoding.org/ns/mei}layer')
         container.set('n', '1')
 
         for staff in section:
@@ -31,7 +34,8 @@ def staff_based_to_sb(original_file, modified_file):
                         print(container[-1].tag)
 
                 # Check if first syllable has @follows
-                first_syllable = layer.find('{http://www.music-encoding.org/ns/mei}syllable')
+                first_syllable = layer.find(
+                    '{http://www.music-encoding.org/ns/mei}syllable')
                 syllable_id = ''
                 if first_syllable is not None:
                     if first_syllable.get('follows') is not None:
@@ -48,7 +52,8 @@ def staff_based_to_sb(original_file, modified_file):
                     container.append(sb)
                 else:
                     print("Non none first_syllable")
-                    syllable = container.find('.//*[@{http://www.w3.org/XML/1998/namespace}id=\'' + syllable_id + '\']')
+                    syllable = container.find(
+                        './/*[@{http://www.w3.org/XML/1998/namespace}id=\'' + syllable_id + '\']')
                     syllable.append(sb)
                     syllable.extend(list(first_syllable))
                 container.extend(list(layer))
@@ -60,6 +65,7 @@ def staff_based_to_sb(original_file, modified_file):
 
     mei_tree.write(modified_file, encoding='utf-8', xml_declaration=True)
 
+
 def sb_based_to_staff(original_file, modified_file):
     mei_tree = ElementTree.parse(original_file)
     mei_tag = mei_tree.getroot()
@@ -69,13 +75,15 @@ def sb_based_to_staff(original_file, modified_file):
         staff_store = []
         for staff in section:
             for layer in staff:
-                sb_indexes = [ list(layer).index(sb) for sb in layer.findall('{http://www.music-encoding.org/ns/mei}sb')]
+                sb_indexes = [list(layer).index(sb) for sb in layer.findall(
+                    '{http://www.music-encoding.org/ns/mei}sb')]
                 for (sb_index, n) in zip(sb_indexes, range(0, len(sb_indexes))):
                     sb = layer[sb_index]
 
-                    new_staff = ElementTree.Element('{http://www.music-encoding.org/ns/mei}staff', sb.attrib)
-                    container = ElementTree.SubElement(new_staff, '{http://www.music-encoding.org/ns/mei}layer')
-
+                    new_staff = ElementTree.Element(
+                        '{http://www.music-encoding.org/ns/mei}staff', sb.attrib)
+                    container = ElementTree.SubElement(
+                        new_staff, '{http://www.music-encoding.org/ns/mei}layer')
 
                     # Check for custos
                     for custos in sb:
@@ -85,7 +93,8 @@ def sb_based_to_staff(original_file, modified_file):
                     container.set('n', '1')
 
                     # Get elements to add
-                    last_index = len(layer) if n + 1 == len(sb_indexes) else sb_indexes[n + 1]
+                    last_index = len(layer) if n + \
+                        1 == len(sb_indexes) else sb_indexes[n + 1]
                     container.extend(layer[sb_index + 1:last_index])
 
                     staff_store.append(new_staff)
@@ -100,15 +109,20 @@ def sb_based_to_staff(original_file, modified_file):
         for (staff, staff_index) in zip(section, range(0, len(section))):
             for layer in staff:
                 for syllable in layer.findall('.//{http://www.music-encoding.org/ns/mei}syllable'):
-                    sb = syllable.find('{http://www.music-encoding.org/ns/mei}sb')
+                    sb = syllable.find(
+                        '{http://www.music-encoding.org/ns/mei}sb')
                     if sb is None:
                         continue
-                    new_staff = ElementTree.Element('{http://www.music-encoding.org/ns/mei}staff', sb.attrib)
-                    new_layer = ElementTree.SubElement(new_staff, '{http://www.music-encoding.org/ns/mei}layer')
+                    new_staff = ElementTree.Element(
+                        '{http://www.music-encoding.org/ns/mei}staff', sb.attrib)
+                    new_layer = ElementTree.SubElement(
+                        new_staff, '{http://www.music-encoding.org/ns/mei}layer')
                     new_layer.set('n', '1')
 
-                    new_syllable = ElementTree.SubElement(new_layer, '{http://www.music-encoding.org/ns/mei}syllable')
-                    new_syllable.set('follows', syllable.get('{http://www.w3.org/XML/1998/namespace}id'))
+                    new_syllable = ElementTree.SubElement(
+                        new_layer, '{http://www.music-encoding.org/ns/mei}syllable')
+                    new_syllable.set('follows', syllable.get(
+                        '{http://www.w3.org/XML/1998/namespace}id'))
                     new_syllable.extend(syllable[list(syllable).index(sb)+1:])
 
                     old_syllable_content = syllable[:list(syllable).index(sb)]
@@ -123,6 +137,5 @@ def sb_based_to_staff(original_file, modified_file):
                     syllable.extend(old_syllable_content)
 
                     section.insert(staff_index + staves_added + 1, new_staff)
-
 
     mei_tree.write(modified_file, encoding='utf-8', xml_declaration=True)
