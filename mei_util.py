@@ -16,37 +16,44 @@ def staff_based_to_sb(original_file, modified_file):
         for staff in section:
             for layer in staff:
                 # Replace every staff + layer with a system begin with the same facsimile
-                sb = ElementTree.SubElement(container, '{http://www.music-encoding.org/ns/mei}sb')
+                sb = ElementTree.Element('{http://www.music-encoding.org/ns/mei}sb', {})
                 sb.set('{http://www.w3.org/XML/1998/namespace}id', staff.get('{http://www.w3.org/XML/1998/namespace}id'))
                 sb.set('facs', staff.get('facs'))
                 # Check for custos
-                if len(container) > 2:
-                    if container[-2].tag == '{http://www.music-encoding.org/ns/mei}custos':
-                        sb.append(container[-2])
-                        container.remove(container[-2])
+                if len(container) > 1:
+                    if container[-1].tag == '{http://www.music-encoding.org/ns/mei}custos':
+                        sb.append(container[-1])
+                        container.remove(container[-1])
                     else:
-                        print(container[-2].tag)
+                        print(container[-1].tag)
 
+                # Check if first syllable has @follows
+                first_syllable = layer.find('{http://www.music-encoding.org/ns/mei}syllable')
+                syllable_id = ''
+                if first_syllable is not None:
+                    if first_syllable.get('follows') is not None:
+                        print("follows is " + first_syllable.get('follows'))
+                        syllable_id = first_syllable.get('follows')
+                        # Remove syl tag(s), if any
+                        for syl in first_syllable.findall('{http://www.music-encoding.org/ns/mei}syl'):
+                            first_syllable.remove(syl)
+                        layer.remove(first_syllable)
+                    else:
+                        first_syllable = None
+
+                if first_syllable is None:
+                    container.append(sb)
+                else:
+                    print("Non none first_syllable")
+                    syllable = container.find('.//*[@{http://www.w3.org/XML/1998/namespace}id=\'' + syllable_id + '\']')
+                    syllable.append(sb)
+                    syllable.extend(list(first_syllable))
                 container.extend(list(layer))
 
         section_id = section.get('{http://www.w3.org/XML/1998/namespace}id')
         section.clear()
         section.set('{http://www.w3.org/XML/1998/namespace}id', section_id)
         section.append(new_staff)
-
-        # Handle split
-        '''
-        for second_half in section.findall('.//*[@follows]'):
-            second_half_id = second_half.get('{http://www.w3.org/XML/1998/namespace}id')
-            first_half_id = second_half.get('follows')
-            first_half = section.find('.//*[@{http://www.w3.org/XML/1998/namespace}id=\'' + first_half_id + '\']')
-            if first_half is None:
-                print("Could not find syllable with xml:id " + first_half_id)
-                continue
-            first_half.extend(list(second_half))
-            section.find('.//*[@{http://www.w3.org/XML/1998/namespace}id=\'' + second_half_id + '\']/..').remove(second_half)
-            #second_half.find('./..').remove(second_half)
-        '''
 
     mei_tree.write(modified_file, encoding='utf-8', xml_declaration=True)
 
