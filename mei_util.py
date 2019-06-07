@@ -1,4 +1,4 @@
-import xml.etree.ElementTree as ElementTree
+from xml.etree import ElementTree
 
 ElementTree.register_namespace('xml', 'http://www.w3.org/XML/1998/namespace')
 ElementTree.register_namespace('', 'http://www.music-encoding.org/ns/mei')
@@ -16,9 +16,12 @@ def staff_based_to_sb(original_file, modified_file):
         for staff in section:
             for layer in staff:
                 # Replace every staff + layer with a system begin with the same facsimile
-                sb = ElementTree.Element('{http://www.music-encoding.org/ns/mei}sb', {})
-                sb.set('{http://www.w3.org/XML/1998/namespace}id', staff.get('{http://www.w3.org/XML/1998/namespace}id'))
-                sb.set('facs', staff.get('facs'))
+                sb = ElementTree.Element('{http://www.music-encoding.org/ns/mei}sb', {
+                    'n': staff.get('n'),
+                    'facs': staff.get('facs'),
+                    '{http://www.w3.org/XML/1998/namespace}id': staff.get('{http://www.w3.org/XML/1998/namespace}id')
+                })
+
                 # Check for custos
                 if len(container) > 1:
                     if container[-1].tag == '{http://www.music-encoding.org/ns/mei}custos':
@@ -66,36 +69,60 @@ def sb_based_to_staff(original_file, modified_file):
         staff_store = []
         for staff in section:
             for layer in staff:
-                count = 1   # Sets the 'n' attribute for the staves
-                new_staff = ElementTree.Element('{http://www.music-encoding.org/ns/mei}staff', {'n': str(count)})
-                count += 1
-                container = None
+                sb_indexes = [ list(layer).index(sb) for sb in layer.findall('{http://www.music-encoding.org/ns/mei}sb')]
+                for (sb_index, n) in zip(sb_indexes, range(0, len(sb_indexes))):
+                    sb = layer[sb_index]
 
-                for elem in layer:
-                    if elem.tag == '{http://www.music-encoding.org/ns/mei}sb':
-                        if container is not None:
-                            if len(list(container)) > 0:
-                                if len(list(elem)) > 0:
-                                    # Move custos
-                                    container.extend(list(elem))
-                                # Add our staff to the list
-                                staff_store.append(new_staff)
-                                new_staff = ElementTree.Element('{http://www.music-encoding.org/ns/mei}staff', {'n': str(count)})
-                                count += 1
-                        # Make sure new_staff uses the sb facs
-                        new_staff.set('facs', elem.get('facs'))
-                        new_staff.set('{http://www.w3.org/XML/1998/namespace}id', elem.get('{http://www.w3.org/XML/1998/namespace}id'))
-                        container = ElementTree.SubElement(new_staff, '{http://www.music-encoding.org/ns/mei}layer')
-                        container.set('n', '1')
-                    else:
-                        container.append(elem)
-                if len(list(container)) > 0:
-                    # Append the last staff if one exists
+                    new_staff = ElementTree.Element('{http://www.music-encoding.org/ns/mei}staff', sb.attrib)
+                    container = ElementTree.SubElement(new_staff, '{http://www.music-encoding.org/ns/mei}layer')
+
+
+                    # Check for custos
+                    for custos in sb:
+                        staff_store[-1][-1].append(custos)
+
+                    # Set attributes
+                    container.set('n', '1')
+
+                    # Get elements to add
+                    last_index = len(layer) if n + 1 == len(sb_indexes) else sb_indexes[n + 1]
+                    container.extend(layer[sb_index + 1:last_index])
+
                     staff_store.append(new_staff)
 
         section_id = section.get('{http://www.w3.org/XML/1998/namespace}id')
         section.clear()
         section.set('{http://www.w3.org/XML/1998/namespace}id', section_id)
         section.extend(staff_store)
+
+        # Handle sb in syllables
+        staves_added = 0
+        for (staff, staff_index) in zip(section, range(0, len(section))):
+            for layer in staff:
+                for syllable in layer.findall('.//{http://www.music-encoding.org/ns/mei}syllable'):
+                    sb = syllable.find('{http://www.music-encoding.org/ns/mei}sb')
+                    if sb is None:
+                        continue
+                    new_staff = ElementTree.Element('{http://www.music-encoding.org/ns/mei}staff', sb.attrib)
+                    new_layer = ElementTree.SubElement(new_staff, '{http://www.music-encoding.org/ns/mei}layer')
+                    new_layer.set('n', '1')
+
+                    new_syllable = ElementTree.SubElement(new_layer, '{http://www.music-encoding.org/ns/mei}syllable')
+                    new_syllable.set('follows', syllable.get('{http://www.w3.org/XML/1998/namespace}id'))
+                    new_syllable.extend(syllable[list(syllable).index(sb)+1:])
+
+                    old_syllable_content = syllable[:list(syllable).index(sb)]
+                    syllable_attrib = syllable.attrib
+
+                    # Handle custos
+                    layer.extend(list(sb))
+
+                    # Shrink syllable
+                    syllable.clear()
+                    syllable.attrib = syllable_attrib
+                    syllable.extend(old_syllable_content)
+
+                    section.insert(staff_index + staves_added + 1, new_staff)
+
 
     mei_tree.write(modified_file, encoding='utf-8', xml_declaration=True)
