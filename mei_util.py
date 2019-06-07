@@ -128,6 +128,14 @@ def sb_based_to_staff(original_file, modified_file):
                     old_syllable_content = syllable[:list(syllable).index(sb)]
                     syllable_attrib = syllable.attrib
 
+                    # Move remaining components to new staff
+                    new_layer.extend(layer[list(layer).index(syllable)+1:])
+                    layer_attrib = layer.attrib
+                    layer_content = layer[:list(layer).index(syllable)]
+                    layer.clear()
+                    layer.attrib = layer_attrib
+                    layer.extend(layer_content)
+
                     # Handle custos
                     layer.extend(list(sb))
 
