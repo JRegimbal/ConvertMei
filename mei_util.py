@@ -30,8 +30,6 @@ def staff_based_to_sb(original_file, modified_file):
                     if container[-1].tag == '{http://www.music-encoding.org/ns/mei}custos':
                         sb.append(container[-1])
                         container.remove(container[-1])
-                    else:
-                        print(container[-1].tag)
 
                 # Check if first syllable has @follows
                 first_syllable = layer.find(
@@ -39,7 +37,6 @@ def staff_based_to_sb(original_file, modified_file):
                 syllable_id = ''
                 if first_syllable is not None:
                     if first_syllable.get('follows') is not None:
-                        print("follows is " + first_syllable.get('follows'))
                         syllable_id = first_syllable.get('follows')
                         # Remove syl tag(s), if any
                         for syl in first_syllable.findall('{http://www.music-encoding.org/ns/mei}syl'):
@@ -51,7 +48,6 @@ def staff_based_to_sb(original_file, modified_file):
                 if first_syllable is None:
                     container.append(sb)
                 else:
-                    print("Non none first_syllable")
                     syllable = container.find(
                         './/*[@{http://www.w3.org/XML/1998/namespace}id=\'' + syllable_id + '\']')
                     syllable.append(sb)
