@@ -116,7 +116,7 @@ def sb_based_to_staff(original_file, modified_file):
                         new_staff, '{http://www.music-encoding.org/ns/mei}layer')
                     new_layer.set('n', '1')
 
-                    new_syllable_id = uuid.uuid4()
+                    new_syllable_id = str(uuid.uuid4())
                     new_syllable = ElementTree.SubElement(
                         new_layer, '{http://www.music-encoding.org/ns/mei}syllable')
                     new_syllable.set('follows', syllable.get(
@@ -132,7 +132,7 @@ def sb_based_to_staff(original_file, modified_file):
                     # Move remaining components to new staff
                     new_layer.extend(layer[list(layer).index(syllable)+1:])
                     layer_attrib = layer.attrib
-                    layer_content = layer[:list(layer).index(syllable)]
+                    layer_content = layer[:list(layer).index(syllable)+1]
                     layer.clear()
                     layer.attrib = layer_attrib
                     layer.extend(layer_content)
