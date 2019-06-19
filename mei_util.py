@@ -1,4 +1,5 @@
 from xml.etree import ElementTree
+import uuid
 
 ElementTree.register_namespace('xml', 'http://www.w3.org/XML/1998/namespace')
 ElementTree.register_namespace('', 'http://www.music-encoding.org/ns/mei')
@@ -115,10 +116,14 @@ def sb_based_to_staff(original_file, modified_file):
                         new_staff, '{http://www.music-encoding.org/ns/mei}layer')
                     new_layer.set('n', '1')
 
+                    new_syllable_id = uuid.uuid4()
                     new_syllable = ElementTree.SubElement(
                         new_layer, '{http://www.music-encoding.org/ns/mei}syllable')
                     new_syllable.set('follows', syllable.get(
                         '{http://www.w3.org/XML/1998/namespace}id'))
+                    new_syllable.set(
+                        '{http://www.w3.org/XML/1998/namespace}id', new_syllable_id)
+                    syllable.set('precedes', new_syllable_id)
                     new_syllable.extend(syllable[list(syllable).index(sb)+1:])
 
                     old_syllable_content = syllable[:list(syllable).index(sb)]
